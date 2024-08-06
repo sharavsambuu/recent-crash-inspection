@@ -14,20 +14,34 @@ from   scipy.stats       import t
 
 
 #%%
-symbol = "DXYZ"
+#symbol = "ES_20240301_20240806"
+symbol = "NKD_20240301_20240806"
 
 df = pd.read_csv(f"./data/{symbol}_1min.csv", parse_dates=True, index_col=0)
+#df = df["2024-06-15":]
 df.dropna(inplace=True)
 
+#%%
+df[:"2024-06-15"]
 
-SIGMA_WINDOW  = 30
+#%%
+df['Close'].plot()
+
+#%%
+df['Volume'].plot()
+
+#%%
+
+
+#%%
+SIGMA_WINDOW  = 40
 DOF           = 0.25
-VOLUME_WINDOW = 120
-VPIN_WINDOW   = 100
+VOLUME_WINDOW = 25
+VPIN_WINDOW   = 30
 VPIN_SMOOTH   = 5
 
 
-df['cum_log_return'] = (df['close']/df['close'].iloc[0]).apply(np.log)
+df['cum_log_return'] = (df['Close']/df['Close'].iloc[0]).apply(np.log)
 df['return'        ] = df['cum_log_return'].diff().fillna(0.0)
 df['sigma'         ] = df['return'].rolling(SIGMA_WINDOW).std().fillna(0.0)
 
@@ -40,7 +54,7 @@ def label(r, sigma):
 
 df['label'       ] = df.apply(lambda x: label(x['return'], x['sigma']), axis=1)
 df['volume_sign' ] = df['label'].apply(np.sign)
-df['volume_label'] = df['volume']*df['volume_sign']
+df['volume_label'] = df['Volume']*df['volume_sign']
 
 
 def sum_positives(arr):
@@ -52,8 +66,6 @@ def sum_negatives(arr):
 
 df["buy_volume" ] = df['volume_label'].rolling(VOLUME_WINDOW).apply(lambda w: sum_positives(w.values))
 df['sell_volume'] = df['volume_label'].rolling(VOLUME_WINDOW).apply(lambda w: sum_negatives(w.values))
-
-
 
 def calculate_vpin(buy_volume, sell_volume, window_size):
     vpin  = buy_volume.sub(sell_volume).abs().rolling(window_size).mean()
@@ -72,11 +84,12 @@ plot_df.index = plot_df.index.astype(str)
 
 fig, axs = plt.subplots(2)
 fig.suptitle(f"{symbol} before creash")
-axs[0].plot(plot_df[[ 'cdf_vpin_smooth']])
+axs[0].plot(plot_df[[ 'cdf_vpin']])
+axs[0].axhline(y=0.8, color='r', linestyle = '--') 
 axs[1].plot(plot_df['cum_log_return'])
 axs[0].set_title('CDF VPIN')
 axs[0].set_xticks([])
-axs[0].legend(['SMOOTHED'])
+axs[0].legend(['VPIN'])
 axs[1].set_title('Price')
 axs[1].set_xticks([])
 plt.tight_layout()
